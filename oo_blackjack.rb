@@ -1,21 +1,3 @@
-# Major nouns: 
-# 
-# Player 
-# - Dealer
-# - User
-# 
-# Hand
-# - Players have hands
-# - Filled with cards
-# 
-# Deck
-# - Filled with cards
-# 
-# Card
-# - Have a suit and a value 
-# 
-# Game (game engine)
-
 require 'colorize'
 require 'pry'
 
@@ -126,6 +108,11 @@ class Deck
         @cards_in_deck << Card.new(suit, value)
       end
     end
+    scramble_cards!
+  end
+
+  def scramble_cards!
+    cards_in_deck.shuffle!
   end
 
   def deal(player, num_times_to_deal=1)
