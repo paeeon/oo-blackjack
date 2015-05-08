@@ -188,11 +188,11 @@ class Game
   end
 
   def everyones_staying?
-    true if (user.status == "Staying") && (dealer.status == "Staying")
+    if (user.status == "Staying") && (dealer.status == "Staying")
   end
 
   def endgame_conditions?
-    true if user.blackjack? || user.bust? || dealer.blackjack? || dealer.bust? || everyones_staying?
+    if user.blackjack? || user.bust? || dealer.blackjack? || dealer.bust? || everyones_staying?
   end
 
   def determine_result
