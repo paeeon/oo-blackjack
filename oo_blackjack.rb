@@ -11,19 +11,15 @@ class Player
   end
 
   def blackjack?
-    true if (hand.hand_value[0] == 21) || (hand.hand_value[1] == 21)
+    (hand.hand_value == 21) || (hand.hand_value == 21)
   end
 
   def bust?
-    true if (hand.hand_value[0] > 21)
+    hand.hand_value > 21
   end
 
   def display_hand_value  # Is there a better name for this? 
-    if hand.hand_value[0] == hand.hand_value[1]
-      puts "#{self} hand is valued at #{hand.hand_value[0]}."
-    else
-      puts "#{self} hand is valued at either #{hand.hand_value[0]} or #{hand.hand_value[1]}."
-    end
+    puts "#{self} hand is valued at #{hand.hand_value}."
   end
 end
 
@@ -32,10 +28,10 @@ class Dealer < Player
     if status == "Hitting"
       puts "Dealer is making their move…"
       sleep(1)
-      if hand.hand_value[1] < 17
+      if hand.hand_value < 17
         puts "Dealer chose to hit.".light_blue
         deck.deal(self)
-      elsif hand.hand_value[1] >= 17
+      elsif hand.hand_value >= 17
         puts "Dealer chose to stay.".light_blue
         self.status = "Staying"
       end
@@ -83,18 +79,31 @@ class Hand
 
   def initialize
     @cards_in_hand = []
-    @hand_value = [0, 0]
+    @hand_value = 0
     @num_cards_in_hand = 0
   end
 
-  def add_to_hand_value(card)
-    if card.value == 'A'
-      hand_value[0] += 1
-      hand_value[1] += 11
-    else
-      hand_value[0] += @@card_values[card.value]
-      hand_value[1] += @@card_values[card.value]
+  def calculate_total
+    total = 0
+
+    cards_in_hand.each do |card|
+      if card.value == 'A'
+        total += 11
+      elsif card.value.to_i == 0
+        total += 10
+      else
+        total += @@card_values[card.value]
+      end
     end
+
+    # Correct for Aces
+    cards_in_hand.select {|card| card.value == 'A'}.count.times do 
+      if total > 21
+        total -= 10
+      end
+    end
+
+    self.hand_value = total
   end
 end
 
@@ -121,7 +130,7 @@ class Deck
       player.hand.cards_in_hand << card_to_deal
       cards_in_deck.delete(card_to_deal)
       player.hand.num_cards_in_hand += 1
-      player.hand.add_to_hand_value(card_to_deal)
+      player.hand.calculate_total
     end
   end
 end
@@ -150,8 +159,8 @@ class Game
 
   def display_cards(reveal=false)
     puts "*** Dealer's Cards ***".yellow
-    puts dealer.hand.cards_in_hand.first
     if !reveal
+      puts dealer.hand.cards_in_hand.first
       puts "…And #{dealer.hand.num_cards_in_hand - 1} other card.\n" if dealer.hand.num_cards_in_hand == 2
       puts "…And #{dealer.hand.num_cards_in_hand - 1} other cards.\n" if dealer.hand.num_cards_in_hand > 2
     else
@@ -169,20 +178,12 @@ class Game
   end
 
   def compare_hands
-    if best_hand_value(user) > best_hand_value(dealer)
+    if user.hand.hand_value > dealer.hand.hand_value
       puts "You have the higher hand value! You win!".green
-    elsif best_hand_value(dealer) > best_hand_value(user)
+    elsif dealer.hand.hand_value > user.hand.hand_value
       puts "The dealer has the higher hand value! You lose!".red
     else
       puts "It's a tie!".green
-    end
-  end
-
-  def best_hand_value(player)
-    if player.hand.hand_value[1] > 21
-      player.hand.hand_value[0]
-    else
-      player.hand.hand_value[1]
     end
   end
 
@@ -194,19 +195,7 @@ class Game
     true if user.blackjack? || user.bust? || dealer.blackjack? || dealer.bust? || everyones_staying?
   end
 
-  def play
-    deck.deal(dealer, 2)
-    deck.deal(user, 2)
-    loop do
-      system 'clear'
-      break if endgame_conditions?
-      display_cards
-      user.makes_a_move(deck)
-      sleep(1)
-      break if endgame_conditions?
-      dealer.makes_a_move(deck)
-    end
-    system 'clear'
+  def determine_result
     display_cards(true)
     if everyones_staying?
       compare_hands
@@ -221,6 +210,27 @@ class Game
         puts "The dealer busted! You win!".green
       end
     end
+  end
+
+  def player_turn(player)
+    if !endgame_conditions?
+      begin
+        system 'clear'
+        display_cards
+        player.makes_a_move(deck)
+        break if endgame_conditions?
+        sleep(1)
+      end until player.status == "Staying"
+    end
+  end
+
+  def play
+    deck.deal(user, 2)
+    deck.deal(dealer, 2)
+    player_turn(user)
+    player_turn(dealer)
+    system 'clear'
+    determine_result
     puts "Wanna play again? (y/n)".green
     play_again = gets.chomp.downcase
     Game.new.play if play_again == 'y'
